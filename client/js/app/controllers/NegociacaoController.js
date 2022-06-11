@@ -6,23 +6,17 @@ class NegociacaoController {
     this._inputQuantidade = $('#quantidade')
     this._inputValor = $('#valor')
 
-    this._listaNegociacoes = ProxyFactory.create(
-      new ListaNegociacoes(),
-      ['adiciona', 'esvazia'],
-      model => {
-        this._negociacoesView.update(model)
-      }
-    )
-
     this._negociacoesView = new NegociacoesView($('#negociacoesView'))
 
-    this._negociacoesView.update(this._listaNegociacoes)
-
-    this._mensagem = ProxyFactory.create(new Mensagem(), ['texto'], model =>
-      this._mensagemView.update(model)
+    this._listaNegociacoes = new Bind(
+      new ListaNegociacoes(),
+      this._negociacoesView,
+      'adiciona',
+      'esvazia'
     )
+
     this._mensagemView = new MensagemView($('#mensagemView'))
-    this._mensagemView.update(this._mensagem)
+    this._mensagem = new Bind(new Mensagem(), this._mensagemView, 'texto')
   }
 
   adiciona(event) {
@@ -31,6 +25,37 @@ class NegociacaoController {
 
     this._mensagem.texto = 'Negociação adicionada com sucesso!'
     this._limpaFormulario()
+  }
+
+  importaNegociacoes() {
+    let xhr = new XMLHttpRequest()
+
+    xhr.open('GET', 'negociacoes/semana')
+
+    xhr.onreadystatechange = () => {
+      if (xhr.readyState == 4) {
+        if (xhr.status == 200) {
+          JSON.parse(xhr.responseText)
+            .map(
+              objeto =>
+                new Negociacao(
+                  new Date(objeto.data),
+                  objeto.quantidade,
+                  objeto.valor
+                )
+            )
+            .forEach(negociacao => this._listaNegociacoes.adiciona(negociacao))
+
+          this._mensagem.texto = 'Negociações importadas com sucesso.'
+        } else {
+          console.log(xhr.responseText)
+          this._mensagem.texto =
+            'Não foi possível obter as negociações da semana.'
+        }
+      }
+    }
+
+    xhr.send()
   }
 
   apaga() {
